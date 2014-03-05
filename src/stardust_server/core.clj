@@ -1,5 +1,6 @@
 (ns stardust-server.core
-  (:require [clojure.core.async :refer [alts! chan go go-loop <! >! timeout]]))
+  (:require [clojure.core.async :refer [alts! chan go go-loop <! >! put! timeout]]
+            [stardust-server.models :as m]))
 
 ;;
 ;; Game Process
@@ -7,14 +8,14 @@
 
 (defn create-state-emmiter
   [state-channel events-channel]
-  (go-loop [state  {}
+  (go-loop [state  (m/game-screen 1000 600)
             events []
             timer  (timeout 100)]
            (let [[event ch] (alts! [timer events-channel])]
              (condp = ch
                events-channel (when event
                                 (recur state (conj events event) timer))
-               timer          (let [new-state state] ;; TODO: State update
+               timer          (let [new-state (m/handle-events state events)]
                                 (>! state-channel new-state)
                                 (recur new-state [] (timeout 100)))))))
 
@@ -50,7 +51,9 @@
                            (do
                              (>! events-channel [client-id event])
                              (recur (<! in)))))
+                       (>! events-channel [client-id [:leave client-id]])
                        (swap! clients dissoc client-id)))]
+    (put! in [:enter client-id])
     (swap! clients assoc client-id client)))
 
 (defn find-available-game
