@@ -1,16 +1,18 @@
-(ns stardust-server.models)
+(ns stardust-server.models
+  (:require [stardust-server.constants :as C]
+            [stardust-server.utils :as u]))
 
 (defrecord Ship [client-id x y vX vY thrust rotation rotate accelerate shoot ticks-before-shoot radius immunity color])
 
-(defrecord DeathMatch [width height ships])
+(defrecord DeathMatch [ships])
 
 (defn ship
   [client-id x y immunity color]
   (Ship. client-id x y 0 0 0 0 :none false false 0 30 immunity color))
 
 (defn death-match
-  [width height]
-  (DeathMatch. width height {}))
+  []
+  (DeathMatch. {}))
 
 ;;
 ;; Handler Protocol
@@ -29,11 +31,11 @@
     (first (filter #(not (contains? colors-in-game %)) (range 1 6)))))
 
 (defn- handle-enter-event
-  [{:keys [width height] :as state} client-id]
+  [state client-id]
   (update-in state [:ships]
              (fn [ships]
                (let [color (next-ship-color ships)]
-                 (assoc ships client-id (ship client-id (/ width 2) (/ height 2) 100 color))))))
+                 (assoc ships client-id (ship client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) 100 color))))))
 
 (defn- handle-leave-event
   [state client-id]
@@ -63,6 +65,75 @@
       :keyboard (handle-keyboard-event state client-id data)
       state)))
 
+;;
+;; Tickable Protocol
+;;
+
+(defprotocol Tickable
+  (tick [_]))
+
+;;
+;; Ship Movement Functions
+;;
+
+(defn- next-position
+  [position dFn velocity max-position]
+  (let [next (dFn position velocity)]
+    (cond
+     (>= next max-position) 0
+     (< next 0)             (- max-position 1)
+     :default               next)))
+
+(defn- next-rotation
+  [rotate rotation turn-factor]
+  (case rotate
+    :left    (mod (- rotation turn-factor) 360)
+    :right   (mod (+ rotation turn-factor) 360)
+    rotation))
+
+(defn- next-thrust
+  [accelerate thrust]
+  (if accelerate
+    (min (+ thrust C/ACCELERATION) C/MAX_THRUST)
+    (max 0 (- thrust C/THRUST_DECLINE))))
+
+(defn- next-velocity
+  [vFn velocity accelerate rotation thrust]
+  (if accelerate
+    (let [next-velocity (+ velocity (* thrust (vFn (* rotation C/RAD_FACTOR))))]
+      (min (max next-velocity (- C/MAX_VELOCITY)) C/MAX_VELOCITY))
+    velocity))
+
+(extend-type Ship
+  Tickable
+  (tick [{:keys [x y vX vY rotation thrust accelerate rotate shoot ticks-before-shoot immunity] :as ship}]
+    (let [shoot? (and shoot (zero? ticks-before-shoot))]
+      (merge ship {:x                  (next-position x + vX C/FIELD_WIDTH)
+                   :y                  (next-position y - vY C/FIELD_HEIGHT)
+                   :vX                 (next-velocity u/sin vX accelerate rotation thrust)
+                   :vY                 (next-velocity u/cos vY accelerate rotation thrust)
+                   :rotation           (next-rotation rotate rotation C/TURN_FACTOR)
+                   :thrust             (next-thrust accelerate thrust)
+                   :ticks-before-shoot (if shoot?
+                                         C/TICKS_BETWEEN_SHOOTS
+                                         (max 0 (dec ticks-before-shoot)))
+                   :immunity           (max 0 (dec immunity))}))))
+
+(extend-type DeathMatch
+  Tickable
+  (tick [{:keys [ships] :as state}]
+    (assoc state :ships (reduce (fn [m [k v]] (assoc m k (tick v))) {} ships))))
+
+;;
+;;
+;;
+
 (defn handle-events
   [state events]
   (reduce handle state events))
+
+(defn advance-state
+  [state events]
+  (-> state
+      (handle-events events)
+      (tick)))

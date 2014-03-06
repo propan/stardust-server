@@ -8,16 +8,16 @@
 
 (defn create-state-emmiter
   [state-channel events-channel]
-  (go-loop [state  (m/death-match 1000 600)
+  (go-loop [state  (m/death-match)
             events []
             timer  (timeout 100)]
            (let [[event ch] (alts! [timer events-channel])]
              (condp = ch
                events-channel (when event
                                 (recur state (conj events event) timer))
-               timer          (let [new-state (m/handle-events state events)]
+               timer          (let [new-state (m/advance-state state events)]
                                 (>! state-channel new-state)
-                                (recur new-state [] (timeout 100)))))))
+                                (recur new-state [] (timeout 10)))))))
 
 (defn create-client-notifier
   [state-channel clients]
