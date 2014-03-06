@@ -55,7 +55,8 @@
                   :message      (handle-message clients data)))))
     connections-channel))
 
-(defn -main []
+(defn -main
+  []
   (let [events      (chan)
         connections (connections-process events)]
     (engine-process connections)

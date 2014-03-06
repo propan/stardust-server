@@ -8,7 +8,7 @@
 
 (defn create-state-emmiter
   [state-channel events-channel]
-  (go-loop [state  (m/game-screen 1000 600)
+  (go-loop [state  (m/death-match 1000 600)
             events []
             timer  (timeout 100)]
            (let [[event ch] (alts! [timer events-channel])]
