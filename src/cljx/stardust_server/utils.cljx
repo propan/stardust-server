@@ -1,4 +1,5 @@
 (ns stardust-server.utils
+  #+clj
   (:import [java.lang Math]))
 
 (defn sin
