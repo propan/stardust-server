@@ -1,10 +1,18 @@
 (ns stardust-server.core
   (:require [clojure.core.async :refer [alts! chan go go-loop <! >! put! timeout]]
-            [stardust-server.models :as m]))
+            [stardust-server.handlers :as h]
+            [stardust-server.models :as m]
+            [stardust-server.tick :as t]))
 
 ;;
 ;; Game Process
 ;;
+
+(defn advance-state
+  [state events multiplier]
+  (-> state
+      (h/handle-events events)
+      (t/tick multiplier)))
 
 (defn create-state-emmiter
   [state-channel events-channel]
@@ -18,7 +26,7 @@
                                 (recur state (conj events event) timer moment))
                timer          (let [current    (System/currentTimeMillis)
                                     multiplier (/ (- current moment) 1000.0)
-                                    new-state  (m/advance-state state events multiplier)]
+                                    new-state  (advance-state state events multiplier)]
                                 (>! state-channel new-state)
                                 (recur new-state [] (timeout 20) current))))))
 
