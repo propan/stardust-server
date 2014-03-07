@@ -2,7 +2,7 @@
   (:require [stardust-server.constants :as C]
             [stardust-server.utils :as u]))
 
-(defrecord Ship [client-id x y vX vY thrust rotation rotate accelerate shoot ticks-before-shoot radius immunity color])
+(defrecord Ship [client-id x y vX vY thrust rotation rotate accelerate shoot time-before-shot radius immunity color])
 
 (defrecord DeathMatch [ships])
 
@@ -35,7 +35,8 @@
   (update-in state [:ships]
              (fn [ships]
                (let [color (next-ship-color ships)]
-                 (assoc ships client-id (ship client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) 100 color))))))
+                 (assoc ships client-id
+                        (ship client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))))))
 
 (defn- handle-leave-event
   [state client-id]
@@ -70,59 +71,60 @@
 ;;
 
 (defprotocol Tickable
-  (tick [_]))
+  (tick [_ multiplier]))
 
 ;;
 ;; Ship Movement Functions
 ;;
 
 (defn- next-position
-  [position dFn velocity max-position]
-  (let [next (dFn position velocity)]
+  [position dFn velocity multiplier max-position]
+  (let [next (dFn position (* velocity multiplier))]
     (cond
      (>= next max-position) 0
      (< next 0)             (- max-position 1)
      :default               next)))
 
 (defn- next-rotation
-  [rotate rotation turn-factor]
+  [rotate rotation multiplier turn-factor]
   (case rotate
-    :left    (mod (- rotation turn-factor) 360)
-    :right   (mod (+ rotation turn-factor) 360)
+    :left    (mod (- rotation (* turn-factor multiplier)) 360)
+    :right   (mod (+ rotation (* turn-factor multiplier)) 360)
     rotation))
 
 (defn- next-thrust
-  [accelerate thrust]
+  [accelerate thrust multiplier]
   (if accelerate
-    (min (+ thrust C/ACCELERATION) C/MAX_THRUST)
-    (max 0 (- thrust C/THRUST_DECLINE))))
+    (min (+ thrust (* multiplier C/ACCELERATION)) C/MAX_THRUST)
+    (max 0 (- thrust (* multiplier C/THRUST_DECLINE)))))
 
 (defn- next-velocity
-  [vFn velocity accelerate rotation thrust]
+  [vFn velocity accelerate rotation thrust multiplier]
   (if accelerate
-    (let [next-velocity (+ velocity (* thrust (vFn (* rotation C/RAD_FACTOR))))]
+    (let [next-velocity (+ velocity (* thrust (vFn (* rotation C/RAD_FACTOR)) multiplier))]
       (min (max next-velocity (- C/MAX_VELOCITY)) C/MAX_VELOCITY))
     velocity))
 
 (extend-type Ship
   Tickable
-  (tick [{:keys [x y vX vY rotation thrust accelerate rotate shoot ticks-before-shoot immunity] :as ship}]
-    (let [shoot? (and shoot (zero? ticks-before-shoot))]
-      (merge ship {:x                  (next-position x + vX C/FIELD_WIDTH)
-                   :y                  (next-position y - vY C/FIELD_HEIGHT)
-                   :vX                 (next-velocity u/sin vX accelerate rotation thrust)
-                   :vY                 (next-velocity u/cos vY accelerate rotation thrust)
-                   :rotation           (next-rotation rotate rotation C/TURN_FACTOR)
-                   :thrust             (next-thrust accelerate thrust)
-                   :ticks-before-shoot (if shoot?
-                                         C/TICKS_BETWEEN_SHOOTS
-                                         (max 0 (dec ticks-before-shoot)))
-                   :immunity           (max 0 (dec immunity))}))))
+  (tick [{:keys [x y vX vY rotation thrust accelerate rotate shoot time-before-shot immunity] :as ship} multiplier]
+    (let [shoot? (and shoot (zero? time-before-shot))
+          time   (* multiplier 1000)]
+      (merge ship {:x                (next-position x + vX multiplier C/FIELD_WIDTH)
+                   :y                (next-position y - vY multiplier C/FIELD_HEIGHT)
+                   :vX               (next-velocity u/sin vX accelerate rotation thrust multiplier)
+                   :vY               (next-velocity u/cos vY accelerate rotation thrust multiplier)
+                   :rotation         (next-rotation rotate rotation multiplier C/TURN_FACTOR)
+                   :thrust           (next-thrust accelerate thrust multiplier)
+                   :time-before-shot (if shoot?
+                                       C/SECONDS_BETWEEN_SHOOTS
+                                       (max 0 (- time-before-shot time)))
+                   :immunity         (max 0 (- immunity time))}))))
 
 (extend-type DeathMatch
   Tickable
-  (tick [{:keys [ships] :as state}]
-    (assoc state :ships (reduce (fn [m [k v]] (assoc m k (tick v))) {} ships))))
+  (tick [{:keys [ships] :as state} multiplier]
+    (assoc state :ships (reduce (fn [m [k v]] (assoc m k (tick v multiplier))) {} ships))))
 
 ;;
 ;;
@@ -133,7 +135,7 @@
   (reduce handle state events))
 
 (defn advance-state
-  [state events]
+  [state events multiplier]
   (-> state
       (handle-events events)
-      (tick)))
+      (tick multiplier)))

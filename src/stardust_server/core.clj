@@ -10,14 +10,17 @@
   [state-channel events-channel]
   (go-loop [state  (m/death-match)
             events []
-            timer  (timeout 100)]
+            timer  (timeout 20)
+            moment (System/currentTimeMillis)]
            (let [[event ch] (alts! [timer events-channel])]
              (condp = ch
                events-channel (when event
-                                (recur state (conj events event) timer))
-               timer          (let [new-state (m/advance-state state events)]
+                                (recur state (conj events event) timer moment))
+               timer          (let [current    (System/currentTimeMillis)
+                                    multiplier (/ (- current moment) 1000.0)
+                                    new-state  (m/advance-state state events multiplier)]
                                 (>! state-channel new-state)
-                                (recur new-state [] (timeout 10)))))))
+                                (recur new-state [] (timeout 20) current))))))
 
 (defn create-client-notifier
   [state-channel clients]
