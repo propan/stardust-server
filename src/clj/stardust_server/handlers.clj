@@ -15,26 +15,26 @@
 ;; Game Screen
 ;;
 
-(defn- next-ship-color
-  [ships]
-  (let [colors-in-game (set (map #(:color (second %)) ships))]
+(defn- next-player-color
+  [players]
+  (let [colors-in-game (set (map #(:color (second %)) players))]
     (first (filter #(not (contains? colors-in-game %)) (range 1 6)))))
 
 (defn- handle-enter-event
   [state client-id]
-  (update-in state [:ships]
-             (fn [ships]
-               (let [color (next-ship-color ships)]
-                 (assoc ships client-id
-                        (m/ship client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))))))
+  (update-in state [:players]
+             (fn [players]
+               (let [color (next-player-color players)]
+                 (assoc players client-id
+                        (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))))))
 
 (defn- handle-leave-event
   [state client-id]
-  (update-in state [:ships] dissoc client-id))
+  (update-in state [:players] dissoc client-id))
 
 (defn- change-player-state
   [state client-id property from to]
-  (update-in state [:ships client-id property] #(if (= % from) to %)))
+  (update-in state [:players client-id property] #(if (= % from) to %)))
 
 (defn- handle-keyboard-event
   [state client-id event]

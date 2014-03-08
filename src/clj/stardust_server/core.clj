@@ -35,7 +35,7 @@
   (go-loop [state (<! state-channel)]
            (when state
              (doseq [[client-id client] @clients]
-               (>! (:out client) (pr-str state)))
+               (>! (:out client) (pr-str (m/death-match-to-screen state client-id))))
              (recur (<! state-channel)))))
 
 (defn create-game
