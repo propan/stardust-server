@@ -1,7 +1,8 @@
 (ns stardust-server.server
   (:require [stardust-server.webbit :refer [start-server]]
             [stardust-server.core :refer [engine-process]]
-            [clojure.core.async :refer [chan go go-loop >! <! close! put!]]))
+            [clojure.core.async :refer [chan go go-loop >! <! close! put!]])
+  (:gen-class :main true))
 
 (def next-id!
   (let [counter (java.util.concurrent.atomic.AtomicLong.)]

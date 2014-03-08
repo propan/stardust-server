@@ -1,11 +1,9 @@
-(ns stardust-server.utils
-  #+clj
-  (:import [java.lang Math]))
+(ns stardust-server.utils)
 
 (defn sin
   [x]
-  (Math/sin x))
+  (#+clj java.lang.Math/sin #+cljs Math/sin x))
 
 (defn cos
   [x]
-  (Math/cos x))
+  (#+clj java.lang.Math/cos #+cljs Math/cos x))

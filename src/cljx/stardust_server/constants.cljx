@@ -1,8 +1,6 @@
-(ns stardust-server.constants
-  #+clj
-  (:import [java.lang Math]))
+(ns stardust-server.constants)
 
-(def RAD_FACTOR (/ Math/PI 180))
+(def RAD_FACTOR (/ #+clj java.lang.Math/PI #+cljs Math/PI 180))
 
 ;;
 ;; Dimensions
