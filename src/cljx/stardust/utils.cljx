@@ -1,4 +1,4 @@
-(ns stardust-server.utils)
+(ns stardust.utils)
 
 (defn sin
   [x]

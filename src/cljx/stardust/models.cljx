@@ -1,4 +1,4 @@
-(ns stardust-server.models)
+(ns stardust.models)
 
 (defrecord Player [client-id x y vX vY thrust rotation rotate accelerate shoot time-before-shot radius immunity color])
 

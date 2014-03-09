@@ -1,4 +1,4 @@
-(ns stardust-server.webbit
+(ns stardust.webbit
   (:import [org.webbitserver WebServer WebServers WebSocketHandler])
   (:require [clojure.core.async :refer [chan dropping-buffer put!]]))
 

@@ -1,14 +1,8 @@
-(ns stardust-server.tick
-  (:require [stardust-server.constants :as C]
-            [stardust-server.utils :as u])
-  (:import [stardust_server.models DeathMatch Player]))
-
-;;
-;; Tickable Protocol
-;;
-
-(defprotocol Tickable
-  (tick [_ multiplier]))
+(ns stardust.tick
+  (:require [stardust.constants :as C]
+            [stardust.protocols :refer [Tickable tick]]
+            [stardust.utils :as u])
+  (:import [stardust.models DeathMatch Player]))
 
 ;;
 ;; Ship Movement Functions

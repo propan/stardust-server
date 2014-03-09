@@ -1,15 +1,8 @@
-(ns stardust-server.handlers
-  (:require [stardust-server.constants :as C]
-            [stardust-server.models :as m])
-  (:import [stardust_server.models DeathMatch]))
-
-
-;;
-;; Handler Protocol
-;;
-
-(defprotocol Handler
-  (handle [_ event]))
+(ns stardust.server.handlers
+  (:require [stardust.constants :as C]
+            [stardust.models :as m]
+            [stardust.protocols :refer [Handler handle]])
+  (:import [stardust.models DeathMatch]))
 
 ;;
 ;; Game Screen

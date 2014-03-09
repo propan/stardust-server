@@ -1,8 +1,9 @@
-(ns stardust-server.core
+(ns stardust.server.core
   (:require [clojure.core.async :refer [alts! chan go go-loop <! >! put! timeout]]
-            [stardust-server.handlers :as h]
-            [stardust-server.models :as m]
-            [stardust-server.tick :as t]))
+            [stardust.server.handlers :as h]
+            [stardust.models :as m]
+            [stardust.protocols :as p]
+            [stardust.tick :as t]))
 
 ;;
 ;; Game Process
@@ -12,7 +13,7 @@
   [state events multiplier]
   (-> state
       (h/handle-events events)
-      (t/tick multiplier)))
+      (p/tick multiplier)))
 
 (defn create-state-emmiter
   [state-channel events-channel]

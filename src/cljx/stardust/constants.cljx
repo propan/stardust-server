@@ -1,4 +1,4 @@
-(ns stardust-server.constants)
+(ns stardust.constants)
 
 (def RAD_FACTOR (/ #+clj java.lang.Math/PI #+cljs Math/PI 180))
 

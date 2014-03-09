@@ -22,5 +22,5 @@
 
   :hooks [cljx.hooks]
 
-  :main stardust-server.server
-  :aot [stardust-server.server])
+  :main stardust.server
+  :aot [stardust.server])

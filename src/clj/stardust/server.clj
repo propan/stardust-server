@@ -1,6 +1,6 @@
-(ns stardust-server.server
-  (:require [stardust-server.webbit :refer [start-server]]
-            [stardust-server.core :refer [engine-process]]
+(ns stardust.server
+  (:require [stardust.webbit :refer [start-server]]
+            [stardust.server.core :refer [engine-process]]
             [clojure.core.async :refer [chan go go-loop >! <! close! put!]])
   (:gen-class :main true))
 
