@@ -1,8 +1,7 @@
 (ns stardust.tick
   (:require [stardust.constants :as C]
             [stardust.protocols :refer [Tickable tick]]
-            [stardust.utils :as u])
-  (:import [stardust.models DeathMatch Player]))
+            [stardust.utils :as u]))
 
 ;;
 ;; Ship Movement Functions
@@ -36,7 +35,7 @@
       (min (max next-velocity (- C/MAX_VELOCITY)) C/MAX_VELOCITY))
     velocity))
 
-(extend-type Player
+(extend-type stardust.models.Player
   Tickable
   (tick [{:keys [x y vX vY rotation thrust accelerate rotate shoot time-before-shot immunity] :as ship} multiplier]
     (let [shoot? (and shoot (zero? time-before-shot))
@@ -52,7 +51,7 @@
                                        (max 0 (- time-before-shot time)))
                    :immunity         (max 0 (- immunity time))}))))
 
-(extend-type DeathMatch
+(extend-type stardust.models.DeathMatch
   Tickable
   (tick [{:keys [players] :as state} multiplier]
     (assoc state :players (reduce (fn [m [k v]] (assoc m k (tick v multiplier))) {} players))))

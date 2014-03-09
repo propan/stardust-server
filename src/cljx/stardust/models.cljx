@@ -6,7 +6,7 @@
 
 (defrecord DeathMatch [players])
 
-(defrecord DeathMatchScreen [player ships])
+(defrecord DeathMatchScreen [out-channel player ships])
 
 (defn player
   [client-id x y immunity color]
@@ -25,4 +25,4 @@
   (let [players (:players state)
         player  (get players client-id)
         ships   (map (fn [k v] (player-to-ship v)) (dissoc players client-id))]
-    (DeathMatchScreen. player ships)))
+    (DeathMatchScreen. nil player ships)))
