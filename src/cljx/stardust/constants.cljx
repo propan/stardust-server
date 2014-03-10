@@ -16,13 +16,13 @@
 ;; Movement
 ;;
 
-(def MAX_VELOCITY 100)
-(def MAX_THRUST 20)
+(def MAX_VELOCITY 350)
+(def MAX_THRUST 200)
 
-(def THRUST_DECLINE 2)
+(def THRUST_DECLINE 100)
 
 (def TURN_FACTOR 180)
-(def ACCELERATION 5)
+(def ACCELERATION 200)
 
 ;;
 ;; Shooting

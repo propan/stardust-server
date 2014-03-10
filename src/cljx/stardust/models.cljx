@@ -24,5 +24,5 @@
   [state client-id]
   (let [players (:players state)
         player  (get players client-id)
-        ships   (map (fn [k v] (player-to-ship v)) (dissoc players client-id))]
+        ships   (mapv (fn [[k v]] (player-to-ship v)) (dissoc players client-id))]
     (DeathMatchScreen. nil player ships)))
