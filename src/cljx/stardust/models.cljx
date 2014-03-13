@@ -8,6 +8,8 @@
 
 (defrecord DeathMatchScreen [out-channel player ships])
 
+(defrecord ConnectionScreen [out-channel])
+
 (defn player
   [client-id x y immunity color]
   (Player. client-id x y 0 0 0 0 :none false false 0 30 immunity color))
@@ -15,6 +17,10 @@
 (defn player-to-ship
   [player]
   (map->Ship player))
+
+(defn connection-screen
+  [out-channel]
+  (ConnectionScreen. out-channel))
 
 (defn death-match
   []
