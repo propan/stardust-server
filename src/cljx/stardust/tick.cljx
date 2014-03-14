@@ -38,8 +38,7 @@
 (extend-type stardust.models.Player
   Tickable
   (tick [{:keys [x y vX vY rotation thrust accelerate rotate shoot time-before-shot immunity] :as ship} multiplier]
-    (let [shoot? (and shoot (zero? time-before-shot))
-          time   (* multiplier 1000)]
+    (let [shoot? (and shoot (zero? time-before-shot))]
       (merge ship {:x                (next-position x + vX multiplier C/FIELD_WIDTH)
                    :y                (next-position y - vY multiplier C/FIELD_HEIGHT)
                    :vX               (next-velocity u/sin vX accelerate rotation thrust multiplier)
@@ -48,8 +47,8 @@
                    :thrust           (next-thrust accelerate thrust multiplier)
                    :time-before-shot (if shoot?
                                        C/SECONDS_BETWEEN_SHOOTS
-                                       (max 0 (- time-before-shot time)))
-                   :immunity         (max 0 (- immunity time))}))))
+                                       (max 0 (- time-before-shot multiplier)))
+                   :immunity         (max 0 (- immunity multiplier))}))))
 
 (extend-type stardust.models.DeathMatch
   Tickable

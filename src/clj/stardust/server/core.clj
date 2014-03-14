@@ -82,10 +82,12 @@
       (enter-game game client)
       (conj games game))))
 
-;; TODO: GC empty games
+(defn gc
+  [games]
+  (filter #(pos? (count @(:clients %))) games))
 
 (defn engine-process
   [connections-channel]
   (go-loop [games []]
            (let [client (<! connections-channel)]
-             (recur (join-game games client)))))
+             (recur (gc (join-game games client))))))
