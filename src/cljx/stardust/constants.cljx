@@ -12,6 +12,8 @@
 (def RIGHT_EDGE (- FIELD_WIDTH 5))
 (def BOTTOM_EDGE (- FIELD_HEIGHT 5))
 
+(def SHIP_RADIUS 20)
+
 ;;
 ;; Movement
 ;;

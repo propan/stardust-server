@@ -12,6 +12,7 @@
 (defn advance-state
   [state events multiplier]
   (-> state
+      (assoc :effects []) ;; reset events
       (h/handle-events events)
       (p/tick multiplier)))
 
