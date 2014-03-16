@@ -1,11 +1,11 @@
 (ns stardust.models
   (:require [stardust.utils :as u]))
 
-(defrecord ObjectPiece [x y lx ly rx ry size vX vY rotate rotation rotation-speed color lifespan time-left])
+(defrecord ObjectPiece [x y vX vY size rotate rotation rotation-factor color lifespan time-left path])
 
-(defrecord Player [client-id x y vX vY thrust rotation rotate accelerate shoot time-before-shot radius immunity color])
+(defrecord Player [client-id x y vX vY h thrust turn accelerate shoot time-before-shot immunity color])
 
-(defrecord Ship [x y rotation radius immunity color])
+(defrecord Ship [x y h immunity color])
 
 (defrecord DeathMatch [players effects])
 
@@ -34,20 +34,21 @@
 ;;
 
 (defn ship-piece
-  [x y lx ly rx ry vX vY rotation color]
+  [x y vX vY rotation color path]
   (let [lifespan (u/random-float 0.4 1.0)]
-    (ObjectPiece. x y lx ly rx ry 1
+    (ObjectPiece. x y
                   (+ (/ vX 2) (* (random-direction) (u/random-int 10 60)))
                   (+ (/ vY 2) (* (random-direction) (u/random-int 10 60)))
-                  (random-rotation) rotation
-                  (u/random-int 20 50)
+                  1
+                  (random-rotation) rotation (u/random-int 20 50)
                   color
                   lifespan
-                  lifespan)))
+                  lifespan
+                  path)))
 
 (defn player
   [client-id x y immunity color]
-  (Player. client-id x y 0 0 0 0 :none false false 0 30 immunity color))
+  (Player. client-id x y 0 0 0 0 :none false false 0 immunity color))
 
 (defn player-to-ship
   [player]

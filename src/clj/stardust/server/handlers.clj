@@ -32,10 +32,10 @@
 (defn- handle-keyboard-event
   [state client-id event]
   (case event
-    :arrow-left-down  (change-player-state state client-id :rotate :none :left)
-    :arrow-left-up    (change-player-state state client-id :rotate :left :none)
-    :arrow-right-down (change-player-state state client-id :rotate :none :right)
-    :arrow-right-up   (change-player-state state client-id :rotate :right :none)
+    :arrow-left-down  (change-player-state state client-id :turn :none  :left)
+    :arrow-left-up    (change-player-state state client-id :turn :left  :none)
+    :arrow-right-down (change-player-state state client-id :turn :none  :right)
+    :arrow-right-up   (change-player-state state client-id :turn :right :none)
     :arrow-up-down    (change-player-state state client-id :accelerate false true)
     :arrow-up-up      (change-player-state state client-id :accelerate true false)
     state))
