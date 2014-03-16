@@ -1,5 +1,8 @@
 (ns stardust.models
-  (:require [stardust.utils :as u]))
+  (:require [stardust.constants :as C]
+            [stardust.utils :as u]))
+
+(defrecord Bullet [cid x y vX vY h e])
 
 (defrecord ObjectPiece [x y vX vY size rotate rotation rotation-factor color lifespan time-left path])
 
@@ -7,9 +10,9 @@
 
 (defrecord Ship [x y h immunity color])
 
-(defrecord DeathMatch [players effects])
+(defrecord DeathMatch [players effects bullets])
 
-(defrecord DeathMatchScreen [out-channel player ships effects])
+(defrecord DeathMatchScreen [out-channel player ships effects bullets])
 
 (defrecord ConnectionScreen [out-channel])
 
@@ -33,6 +36,12 @@
 ;; Factory functions
 ;;
 
+(defn bullet
+  [client-id x y heading]
+  (let [vX (* C/BULLET_VELOCITY (Math/sin (* heading (- C/RAD_FACTOR))))
+        vY (* C/BULLET_VELOCITY (Math/cos (* heading (- C/RAD_FACTOR))))]
+    (Bullet. client-id (- x (* 0.05 vX)) (- y (* 0.05 vY)) vX vY heading C/INITIAL_BULLET_ENERGY)))
+
 (defn ship-piece
   [x y vX vY rotation color path]
   (let [lifespan (u/random-float 0.4 1.0)]
@@ -51,8 +60,8 @@
   (Player. client-id x y 0 0 0 0 :none false false 0 immunity color))
 
 (defn player-to-ship
-  [player]
-  (map->Ship player))
+  [{:keys [x y h immunity color]}]
+  (Ship. x y h immunity color))
 
 (defn connection-screen
   [out-channel]
@@ -60,10 +69,10 @@
 
 (defn death-match
   []
-  (DeathMatch. {} []))
+  (DeathMatch. {} [] []))
 
 (defn death-match-to-screen
-  [{:keys [players effects] :as state} client-id]
+  [{:keys [players effects bullets] :as state} client-id]
   (let [player  (get players client-id)
         ships   (mapv (fn [[k v]] (player-to-ship v)) (dissoc players client-id))]
-    (DeathMatchScreen. nil player ships effects)))
+    (DeathMatchScreen. nil player ships effects bullets)))

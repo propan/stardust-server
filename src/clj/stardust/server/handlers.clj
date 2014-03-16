@@ -38,6 +38,8 @@
     :arrow-right-up   (change-player-state state client-id :turn :right :none)
     :arrow-up-down    (change-player-state state client-id :accelerate false true)
     :arrow-up-up      (change-player-state state client-id :accelerate true false)
+    :space-down       (change-player-state state client-id :shoot false true)
+    :space-up         (change-player-state state client-id :shoot true false)
     state))
 
 (extend-type DeathMatch

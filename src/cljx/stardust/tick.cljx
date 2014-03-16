@@ -45,6 +45,13 @@
       (min (max next-velocity (- C/MAX_VELOCITY)) C/MAX_VELOCITY))
     velocity))
 
+(extend-type stardust.models.Bullet
+  Tickable
+  (tick [{:keys [x y vX vY e] :as bullet} multiplier]
+    (merge bullet {:x (next-position x - vX multiplier C/FIELD_WIDTH)
+                   :y (next-position y - vY multiplier C/FIELD_HEIGHT)
+                   :e (- e (* C/BULLET_ENERGY_DECLINE multiplier))})))
+
 (extend-type stardust.models.ObjectPiece
   Tickable
   (tick [{:keys [x y vX vY rotate rotation rotation-factor time-left] :as piece} multiplier]
@@ -100,11 +107,26 @@
       (merge state {:players players
                     :effects (apply concat effects (vals new-effects))}))))
 
+(defn- player-shoot
+  [bullets [client-id player]]
+  (let [{:keys [client-id x y h shoot time-before-shot]} player]
+    (if (and shoot (zero? time-before-shot))
+      (cons (m/bullet client-id x y h) bullets)
+      bullets)))
+
+(defn- bullets-tick
+  [players bullets multiplier]
+  (->>
+   (reduce player-shoot bullets players)
+   (map #(tick % multiplier))
+   (filter #(pos? (:e %)))))
+
 (extend-type stardust.models.DeathMatch
   Tickable
-  (tick [{:keys [players] :as state} multiplier]
+  (tick [{:keys [players bullets] :as state} multiplier]
     (-> state
-        (assoc :players (reduce (fn [m [k v]] (assoc m k (tick v multiplier))) {} players))
+        (merge {:players (reduce (fn [m [k v]] (assoc m k (tick v multiplier))) {} players)
+                :bullets (bullets-tick players bullets multiplier)})
         (detect-players-collisions))))
 
 (extend-type stardust.models.ConnectionScreen
