@@ -107,6 +107,47 @@
       (merge state {:players players
                     :effects (apply concat effects (vals new-effects))}))))
 
+(defn- bullet-hit?
+  [client-id x y bullet]
+  (and (not (= client-id (:cid bullet)))
+       (<= (u/distance x y (:x bullet) (:y bullet))
+           (+ C/BULLET_RADIUS C/SHIP_RADIUS))))
+
+(defn- find-bullet-hit
+  [{:keys [client-id x y]} bullets]
+  (loop [hit     nil
+         result  []      ;; transient?
+         bullets bullets]
+    (let [bullet (first bullets)]
+      (if (or hit (not bullet))
+        [hit (into result bullets)]
+        (if (bullet-hit? client-id x y bullet)
+          (recur bullet result (rest bullets))
+          (recur nil (conj result bullet) (rest bullets)))))))
+
+(defn- detect-bullets-hits
+  [{:keys [players bullets effects] :as state}]
+  (loop [players     players
+         new-effects {}
+         bullets     bullets
+         ships       (vals players)]
+    (let [ship (first ships)]
+      (if (or (not ship)
+              (not bullets))
+        (merge state {:players players
+                      :bullets bullets
+                      :effects (apply concat effects (vals new-effects))})
+        (let [[hit bullets] (find-bullet-hit ship bullets)]
+          (if hit
+            (let [{:keys [client-id color]} ship]
+              (recur (assoc players
+                       client-id (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))
+                     (assoc new-effects
+                       client-id (create-ship-explosion-effect ship))
+                     bullets
+                     (rest ships)))
+            (recur players new-effects bullets (rest ships))))))))
+
 (defn- player-shoot
   [bullets [client-id player]]
   (let [{:keys [client-id x y h shoot time-before-shot]} player]
@@ -127,7 +168,8 @@
     (-> state
         (merge {:players (reduce (fn [m [k v]] (assoc m k (tick v multiplier))) {} players)
                 :bullets (bullets-tick players bullets multiplier)})
-        (detect-players-collisions))))
+        (detect-players-collisions)
+        (detect-bullets-hits))))
 
 (extend-type stardust.models.ConnectionScreen
   Tickable
