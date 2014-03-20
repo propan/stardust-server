@@ -7,6 +7,10 @@
 ;; Effects
 ;;
 
+(defn create-hit-effect
+  [{:keys [x y]}]
+  (repeatedly (u/random-int 3 7) #(m/particle x y)))
+
 (defn create-ship-explosion-effect
   [{:keys [x y vX vY h color] :as ship}]
   (let [points [[-10 10] [0 -15] [10 10] [7 5] [-7 5]]
@@ -59,6 +63,13 @@
                   :y         (next-position y + vY multiplier C/FIELD_HEIGHT)
                   :rotation  (next-rotation rotate rotation multiplier rotation-factor)
                   :time-left (- time-left multiplier)})))
+
+(extend-type stardust.models.Particle
+  Tickable
+  (tick [{:keys [x y vX vY time-left] :as particle} multiplier]
+    (merge particle {:x         (next-position x - vX multiplier C/FIELD_WIDTH)
+                     :y         (next-position y - vY multiplier C/FIELD_HEIGHT)
+                     :time-left (- time-left multiplier)})))
 
 (extend-type stardust.models.Player
   Tickable
@@ -115,7 +126,7 @@
 
 (defn- find-bullet-hit
   [{:keys [client-id x y]} bullets]
-  (loop [hit     nil
+  (loop [hit     nil     ;; how about multiple hits?
          result  []      ;; transient?
          bullets bullets]
     (let [bullet (first bullets)]
@@ -128,7 +139,7 @@
 (defn- detect-bullets-hits
   [{:keys [players bullets effects] :as state}]
   (loop [players     players
-         new-effects {}
+         new-effects {} ;; there was some reason, but what?
          bullets     bullets
          ships       (vals players)]
     (let [ship (first ships)]
@@ -140,13 +151,20 @@
         (if-not (pos? (:immunity ship))
           (let [[hit bullets] (find-bullet-hit ship bullets)]
             (if hit
-              (let [{:keys [client-id color]} ship]
-                (recur (assoc players
-                         client-id (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))
-                       (assoc new-effects
-                         client-id (create-ship-explosion-effect ship))
-                       bullets
-                       (rest ships)))
+              (let [{:keys [client-id color life]} ship
+                    life-left                      (- life (:e hit))]
+                (if (pos? life-left)
+                  (recur (assoc-in players [client-id :life] life-left)
+                         (update-in new-effects [100] into (create-hit-effect ship))
+                         bullets
+                         (rest ships))
+                  (recur (assoc players
+                           client-id (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))
+                         (-> new-effects
+                             (assoc client-id (create-ship-explosion-effect ship))
+                             (update-in [100] into (create-hit-effect ship)))
+                         bullets
+                         (rest ships))))
               (recur players new-effects bullets (rest ships))))
           (recur players new-effects bullets (rest ships)))))))
 

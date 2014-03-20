@@ -6,7 +6,9 @@
 
 (defrecord ObjectPiece [x y vX vY size rotate rotation rotation-factor color lifespan time-left path])
 
-(defrecord Player [client-id x y vX vY h thrust turn accelerate shoot time-before-shot immunity color])
+(defrecord Particle [x y vX vY r lifespan time-left])
+
+(defrecord Player [client-id x y vX vY h thrust turn accelerate shoot time-before-shot immunity color life])
 
 (defrecord Ship [x y h immunity color])
 
@@ -38,8 +40,8 @@
 
 (defn bullet
   [client-id x y heading]
-  (let [vX (* C/BULLET_VELOCITY (Math/sin (* heading (- C/RAD_FACTOR))))
-        vY (* C/BULLET_VELOCITY (Math/cos (* heading (- C/RAD_FACTOR))))]
+  (let [vX (* C/BULLET_VELOCITY (u/sin (* heading (- C/RAD_FACTOR))))
+        vY (* C/BULLET_VELOCITY (u/cos (* heading (- C/RAD_FACTOR))))]
     (Bullet. client-id (- x (* 0.05 vX)) (- y (* 0.05 vY)) vX vY heading C/INITIAL_BULLET_ENERGY)))
 
 (defn ship-piece
@@ -55,9 +57,17 @@
                   lifespan
                   path)))
 
+(defn particle
+  [x y]
+  (let [rotation (u/random-int 0 360)
+        vX       (* (u/random-float C/MIN_PARTICLE_SPEED C/MAX_PARTICLE_SPEED) (u/sin (* rotation (- C/RAD_FACTOR))))
+        vY       (* (u/random-float C/MIN_PARTICLE_SPEED C/MAX_PARTICLE_SPEED) (u/cos (* rotation (- C/RAD_FACTOR))))
+        lifespan (u/random-float 0.4 0.8)]
+    (Particle. x y vX vY (u/random-int 1 5) lifespan lifespan)))
+
 (defn player
   [client-id x y immunity color]
-  (Player. client-id x y 0 0 0 0 :none false false 0 immunity color))
+  (Player. client-id x y 0 0 0 0 :none false false 0 immunity color C/MAX_PLAYER_LIFE))
 
 (defn player-to-ship
   [{:keys [x y h immunity color]}]

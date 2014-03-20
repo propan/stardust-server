@@ -12,7 +12,13 @@
 (def RIGHT_EDGE (- FIELD_WIDTH 5))
 (def BOTTOM_EDGE (- FIELD_HEIGHT 5))
 
-(def SHIP_RADIUS 20)
+(def SHIP_RADIUS 18)
+
+;;
+;; Players
+;;
+
+(def MAX_PLAYER_LIFE 250)
 
 ;;
 ;; Movement
@@ -25,6 +31,9 @@
 
 (def TURN_FACTOR 180)
 (def ACCELERATION 200)
+
+(def MIN_PARTICLE_SPEED 10)
+(def MAX_PARTICLE_SPEED 200)
 
 ;;
 ;; Shooting
