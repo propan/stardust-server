@@ -137,16 +137,18 @@
         (merge state {:players players
                       :bullets bullets
                       :effects (apply concat effects (vals new-effects))})
-        (let [[hit bullets] (find-bullet-hit ship bullets)]
-          (if hit
-            (let [{:keys [client-id color]} ship]
-              (recur (assoc players
-                       client-id (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))
-                     (assoc new-effects
-                       client-id (create-ship-explosion-effect ship))
-                     bullets
-                     (rest ships)))
-            (recur players new-effects bullets (rest ships))))))))
+        (if-not (pos? (:immunity ship))
+          (let [[hit bullets] (find-bullet-hit ship bullets)]
+            (if hit
+              (let [{:keys [client-id color]} ship]
+                (recur (assoc players
+                         client-id (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))
+                       (assoc new-effects
+                         client-id (create-ship-explosion-effect ship))
+                       bullets
+                       (rest ships)))
+              (recur players new-effects bullets (rest ships))))
+          (recur players new-effects bullets (rest ships)))))))
 
 (defn- player-shoot
   [bullets [client-id player]]
