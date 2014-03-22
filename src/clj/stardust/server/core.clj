@@ -1,5 +1,5 @@
 (ns stardust.server.core
-  (:require [clojure.core.async :refer [alts! chan go go-loop <! >! put! timeout]]
+  (:require [clojure.core.async :refer [alts! chan close! go go-loop <! >! put! timeout]]
             [stardust.server.handlers :as h]
             [stardust.models :as m]
             [stardust.protocols :as p]
@@ -71,7 +71,7 @@
 
 (defn find-available-game
   [games]
-  (first (filter #(< (count @(:clients %)) 6) games)))
+  (first (filter #(< (count @(:clients %)) 5) games)))
 
 (defn join-game
   [games client]
@@ -83,12 +83,23 @@
       (enter-game game client)
       (conj games game))))
 
-(defn gc
+(defn- destroy-game-if-empty
+  [games {:keys [clients state-channel events-channel] :as game}]
+  (if (pos? (count @clients))
+    (conj games game)
+    (do
+      (close! state-channel)
+      (close! events-channel)
+      games)))
+
+(defn remove-empty-games
   [games]
-  (filter #(pos? (count @(:clients %))) games))
+  (reduce destroy-game-if-empty [] games))
 
 (defn engine-process
   [connections-channel]
   (go-loop [games []]
            (let [client (<! connections-channel)]
-             (recur (gc (join-game games client))))))
+             (recur (-> games
+                        (remove-empty-games)
+                        (join-game client))))))

@@ -180,7 +180,8 @@
   (->>
    (reduce player-shoot bullets players)
    (map #(tick % multiplier))
-   (filter #(pos? (:e %)))))
+   (filter #(pos? (:e %)))
+   (into [])))
 
 (extend-type stardust.models.DeathMatch
   Tickable
@@ -200,7 +201,8 @@
   [effects multiplier]
   (->> effects
        (map #(tick % multiplier) effects)
-       (filter #(pos? (:time-left %)))))
+       (filter #(pos? (:time-left %)))
+       (into [])))
 
 (extend-type stardust.models.DeathMatchScreen
   Tickable

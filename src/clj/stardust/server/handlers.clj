@@ -11,7 +11,7 @@
 (defn- next-player-color
   [players]
   (let [colors-in-game (set (map #(:color (second %)) players))]
-    (first (filter #(not (contains? colors-in-game %)) (range 1 6)))))
+    (first (filter #(not (contains? colors-in-game %)) (range 0 5)))))
 
 (defn- handle-enter-event
   [state client-id]
