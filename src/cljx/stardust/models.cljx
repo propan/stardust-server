@@ -6,7 +6,7 @@
 
 (defrecord ObjectPiece [x y vX vY size rotate rotation rotation-factor color lifespan time-left path])
 
-(defrecord Particle [x y vX vY r lifespan time-left])
+(defrecord Particle [x y vX vY h s lifespan time-left])
 
 (defrecord Player [client-id x y vX vY h thrust turn accelerate shoot time-before-shot immunity color life])
 
@@ -59,11 +59,12 @@
 
 (defn particle
   [x y]
-  (let [rotation (u/random-int 0 360)
-        vX       (* (u/random-float C/MIN_PARTICLE_SPEED C/MAX_PARTICLE_SPEED) (u/sin (* rotation (- C/RAD_FACTOR))))
-        vY       (* (u/random-float C/MIN_PARTICLE_SPEED C/MAX_PARTICLE_SPEED) (u/cos (* rotation (- C/RAD_FACTOR))))
-        lifespan (u/random-float 0.4 0.8)]
-    (Particle. x y vX vY (u/random-int 1 5) lifespan lifespan)))
+  (let [heading  (u/random-int 0 360)
+        velocity (u/random-float C/MIN_PARTICLE_SPEED C/MAX_PARTICLE_SPEED)
+        vX       (* velocity (u/sin (* heading (- C/RAD_FACTOR))))
+        vY       (* velocity (u/cos (* heading (- C/RAD_FACTOR))))
+        lifespan (u/random-float 0.2 0.4)]
+    (Particle. x y vX vY heading (u/random-int 1 2) lifespan lifespan)))
 
 (defn player
   [client-id x y immunity color]

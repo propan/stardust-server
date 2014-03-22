@@ -155,14 +155,14 @@
                     life-left                      (- life (:e hit))]
                 (if (pos? life-left)
                   (recur (assoc-in players [client-id :life] life-left)
-                         (update-in new-effects [100] into (create-hit-effect ship))
+                         (update-in new-effects [100] into (create-hit-effect hit))
                          bullets
                          (rest ships))
                   (recur (assoc players
                            client-id (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))
                          (-> new-effects
                              (assoc client-id (create-ship-explosion-effect ship))
-                             (update-in [100] into (create-hit-effect ship)))
+                             (update-in [100] into (create-hit-effect hit)))
                          bullets
                          (rest ships))))
               (recur players new-effects bullets (rest ships))))
