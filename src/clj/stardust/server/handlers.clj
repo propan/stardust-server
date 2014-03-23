@@ -15,15 +15,19 @@
 
 (defn- handle-enter-event
   [state client-id]
-  (update-in state [:players]
-             (fn [players]
-               (let [color (next-player-color players)]
-                 (assoc players client-id
-                        (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))))))
+  (-> state
+      (update-in [:players]
+                 (fn [players]
+                   (let [color (next-player-color players)]
+                     (assoc players client-id
+                            (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color)))))
+      (assoc-in [:score client-id] 0)))
 
 (defn- handle-leave-event
   [state client-id]
-  (update-in state [:players] dissoc client-id))
+  (-> state
+      (update-in [:players] dissoc client-id)
+      (update-in [:score] dissoc client-id)))
 
 (defn- change-player-state
   [state client-id property from to]

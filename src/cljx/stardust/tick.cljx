@@ -98,9 +98,10 @@
       (* 2 C/SHIP_RADIUS)))
 
 (defn- detect-players-collisions
-  [{:keys [players effects] :as state}]
+  [{:keys [players effects score] :as state}]
   (loop [players     players
          new-effects {}
+         score       score
          pairs       (pair-players players)]
     (if-let [[p1 p2] (first pairs)]
       (if (ships-collide? p1 p2)
@@ -113,10 +114,14 @@
                  (assoc new-effects
                    client-id-1 (create-ship-explosion-effect p1)
                    client-id-2 (create-ship-explosion-effect p2))
+                 (-> score
+                     (update-in [client-id-1] dec)
+                     (update-in [client-id-2] dec))
                  (rest pairs)))
-        (recur players new-effects (rest pairs)))
+        (recur players new-effects score (rest pairs)))
       (merge state {:players players
-                    :effects (apply concat effects (vals new-effects))}))))
+                    :effects (apply concat effects (vals new-effects))
+                    :score   score}))))
 
 (defn- bullet-hit?
   [client-id x y bullet]
@@ -137,16 +142,18 @@
           (recur nil (conj result bullet) (rest bullets)))))))
 
 (defn- detect-bullets-hits
-  [{:keys [players bullets effects] :as state}]
+  [{:keys [players bullets effects score] :as state}]
   (loop [players     players
          new-effects {} ;; there was some reason, but what?
          bullets     bullets
+         score       score
          ships       (vals players)]
     (let [ship (first ships)]
       (if (or (not ship)
               (not bullets))
         (merge state {:players players
                       :bullets bullets
+                      :score   score
                       :effects (apply concat effects (vals new-effects))})
         (if-not (pos? (:immunity ship))
           (let [[hit bullets] (find-bullet-hit ship bullets)]
@@ -157,6 +164,7 @@
                   (recur (assoc-in players [client-id :life] life-left)
                          (update-in new-effects [100] into (create-hit-effect hit))
                          bullets
+                         score
                          (rest ships))
                   (recur (assoc players
                            client-id (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))
@@ -164,9 +172,10 @@
                              (assoc client-id (create-ship-explosion-effect ship))
                              (update-in [100] into (create-hit-effect hit)))
                          bullets
+                         (update-in score [(:cid hit)] inc)
                          (rest ships))))
-              (recur players new-effects bullets (rest ships))))
-          (recur players new-effects bullets (rest ships)))))))
+              (recur players new-effects bullets score (rest ships))))
+          (recur players new-effects bullets score (rest ships)))))))
 
 (defn- player-shoot
   [bullets [client-id player]]
@@ -206,6 +215,6 @@
 
 (extend-type stardust.models.DeathMatchScreen
   Tickable
-  (tick [{:keys [players effects] :as state} multiplier]
+  (tick [{:keys [effects] :as state} multiplier]
     (-> state
         (assoc :effects (effects-tick effects multiplier)))))

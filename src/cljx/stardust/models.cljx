@@ -12,9 +12,9 @@
 
 (defrecord Ship [x y h immunity color])
 
-(defrecord DeathMatch [players effects bullets])
+(defrecord DeathMatch [players effects bullets score])
 
-(defrecord DeathMatchScreen [out-channel player ships effects bullets])
+(defrecord DeathMatchScreen [out-channel player ships effects bullets score])
 
 (defrecord ConnectionScreen [out-channel])
 
@@ -80,10 +80,10 @@
 
 (defn death-match
   []
-  (DeathMatch. {} [] []))
+  (DeathMatch. {} [] [] {}))
 
 (defn death-match-to-screen
-  [{:keys [players effects bullets] :as state} client-id]
+  [{:keys [players effects bullets score] :as state} client-id]
   (let [player  (get players client-id)
-        ships   (mapv (fn [[k v]] (player-to-ship v)) (dissoc players client-id))]
-    (DeathMatchScreen. nil player ships effects bullets)))
+        ships   (reduce (fn [sx [k v]] (assoc sx k (player-to-ship v))) {} (dissoc players client-id))]
+    (DeathMatchScreen. nil player ships effects bullets score)))
