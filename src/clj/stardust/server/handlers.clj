@@ -15,23 +15,28 @@
 
 (defn- handle-enter-event
   [state client-id]
-  (-> state
-      (update-in [:players]
-                 (fn [players]
-                   (let [color (next-player-color players)]
-                     (assoc players client-id
-                            (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color)))))
-      (assoc-in [:score client-id] 0)))
+  (let [color  (next-player-color (:players state))
+        player (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color)]
+    (-> state
+        (assoc-in  [:players client-id] player)
+        (assoc-in  [:score client-id] 0)
+        (update-in [:events] into [[:state client-id (m/death-match-to-screen client-id state)] [:join :all player]]))))
 
 (defn- handle-leave-event
   [state client-id]
   (-> state
       (update-in [:players] dissoc client-id)
-      (update-in [:score] dissoc client-id)))
+      (update-in [:score]   dissoc client-id)
+      (update-in [:events]  conj   [:leave :all client-id])))
 
 (defn- change-player-state
   [state client-id property from to]
-  (update-in state [:players client-id property] #(if (= % from) to %)))
+  (let [current (get-in state [:players client-id property])]
+    (if (= current from)
+      (-> state
+          (assoc-in  [:players client-id property] to)
+          (update-in [:events] conj [:property :all [client-id property to]]))
+      state)))
 
 (defn- handle-keyboard-event
   [state client-id event]
@@ -55,6 +60,6 @@
       :keyboard (handle-keyboard-event state client-id data)
       state)))
 
-(defn handle-events
-  [state events]
-  (reduce handle state events))
+(defn handle-commands
+  [state commands]
+  (reduce handle state commands))

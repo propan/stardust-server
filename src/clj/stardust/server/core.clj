@@ -10,61 +10,75 @@
 ;;
 
 (defn advance-state
-  [state events multiplier]
+  [state commands multiplier]
   (-> state
-      (assoc :effects []) ;; reset events
-      (h/handle-events events)
+      (assoc :effects []) ;; TODO: remove?
+      (h/handle-commands commands)
       (p/tick multiplier)))
 
-(defn create-state-emmiter
-  [state-channel events-channel]
-  (go-loop [state  (m/death-match)
-            events []
-            timer  (timeout 20)
-            moment (System/currentTimeMillis)]
-           (let [[event ch] (alts! [timer events-channel])]
+(defn create-events-emmiter
+  [events-channel commands-channel]
+  (go-loop [state         (m/death-match)
+            commands      []
+            advance-timer (timeout 20)
+            sync-timer    (timeout 3000)
+            moment        (System/currentTimeMillis)]
+           (let [[command ch] (alts! [advance-timer sync-timer commands-channel])]
              (condp = ch
-               events-channel (when event
-                                (recur state (conj events event) timer moment))
-               timer          (let [current    (System/currentTimeMillis)
-                                    multiplier (/ (- current moment) 1000.0)
-                                    new-state  (advance-state state events multiplier)]
-                                (>! state-channel new-state)
-                                (recur new-state [] (timeout 20) current))))))
+               commands-channel (when command
+                                  (recur state (conj commands command) advance-timer sync-timer moment))
+               advance-timer    (let [current    (System/currentTimeMillis)
+                                      multiplier (/ (- current moment) 1000.0)
+                                      new-state  (advance-state state commands multiplier)]
+                                  (doseq [event (:events new-state)]
+                                    (>! events-channel event))
+                                  (recur (assoc new-state :events []) [] (timeout 20) sync-timer current))
+               sync-timer        (do
+                                   (doseq [[client-id _] (:players state)]
+                                     (>! events-channel [:state client-id (m/death-match-to-screen client-id state)]))
+                                   (recur state commands advance-timer (timeout 3000) moment))))))
 
 (defn create-client-notifier
-  [state-channel clients]
-  (go-loop [state (<! state-channel)]
-           (when state
-             (doseq [[client-id client] @clients]
-               (>! (:out client) (m/death-match-to-screen state client-id)))
-             (recur (<! state-channel)))))
+  [events-channel clients]
+  (go-loop [event (<! events-channel)]
+           (when event
+             (let [[source target data] event
+                   active-clients       @clients
+                   message              [source data]]
+               (if (= target :all)
+                 ;; notify everyone
+                 (doseq [[client-id client] active-clients]
+                   (>! (:out client) message))
+                 ;; send privately
+                 (when-let [chan (get-in active-clients [target :out])]
+                   (>! chan message))))
+             (recur (<! events-channel)))))
 
 (defn create-game
   []
-  (let [clients        (atom {})
-        state-channel  (chan)
-        events-channel (chan)]
-    {:clients         clients
-     :state-channel   state-channel
-     :events-channel  events-channel
-     :state-emmiter   (create-state-emmiter state-channel events-channel)
-     :client-notifier (create-client-notifier state-channel clients)}))
+  (let [clients          (atom {})
+        events-channel   (chan)
+        commands-channel (chan)]
+    {:clients          clients
+     :events-channel   events-channel
+     :commands-channel commands-channel
+     :events-emmiter   (create-events-emmiter events-channel commands-channel)
+     :client-notifier  (create-client-notifier events-channel clients)}))
 
 ;;
 ;;
 ;;
 
 (defn enter-game
-  [{:keys [clients events-channel]} {:keys [client-id in] :as client}]
+  [{:keys [clients commands-channel]} {:keys [client-id in] :as client}]
   (let [client (assoc client :in-process
                       (go
-                       (loop [event (<! in)]
-                         (when-not (nil? event)
+                       (loop [command (<! in)]
+                         (when-not (nil? command)
                            (do
-                             (>! events-channel [client-id event])
+                             (>! commands-channel [client-id command])
                              (recur (<! in)))))
-                       (>! events-channel [client-id [:leave client-id]])
+                       (>! commands-channel [client-id [:leave client-id]])
                        (swap! clients dissoc client-id)))]
     (put! in [:enter client-id])
     (swap! clients assoc client-id client)))
@@ -84,11 +98,11 @@
       (conj games game))))
 
 (defn- destroy-game-if-empty
-  [games {:keys [clients state-channel events-channel] :as game}]
+  [games {:keys [clients commands-channel events-channel] :as game}]
   (if (pos? (count @clients))
     (conj games game)
     (do
-      (close! state-channel)
+      (close! commands-channel)
       (close! events-channel)
       games)))
 

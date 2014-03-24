@@ -18,7 +18,7 @@
     (map #(m/ship-piece x y vX vY h color %) pieces)))
 
 ;;
-;; Ship Movement Functions
+;; Movement Functions
 ;;
 
 (defn- next-position
@@ -98,30 +98,44 @@
       (* 2 C/SHIP_RADIUS)))
 
 (defn- detect-players-collisions
-  [{:keys [players effects score] :as state}]
+  [{:keys [players effects score events] :as state}]
   (loop [players     players
          new-effects {}
+         new-events  []
          score       score
          pairs       (pair-players players)]
     (if-let [[p1 p2] (first pairs)]
       (if (ships-collide? p1 p2)
         (let [client-id-1 (:client-id p1)
-              client-id-2 (:client-id p2)]
+              client-id-2 (:client-id p2)
+              player-1    (m/player client-id-1
+                                    (/ C/FIELD_WIDTH 2)
+                                    (/ C/FIELD_HEIGHT 2)
+                                    C/SPAWN_IMMUNITY_SECONDS
+                                    (:color p1))
+              player-2    (m/player client-id-2
+                                    (/ C/FIELD_WIDTH 2)
+                                    (/ C/FIELD_HEIGHT 2)
+                                    C/SPAWN_IMMUNITY_SECONDS
+                                    (:color p2))]
           ;; TODO: refactor?
           (recur (assoc players
-                   client-id-1 (m/player client-id-1 (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS (:color p1))
-                   client-id-2 (m/player client-id-2 (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS (:color p2)))
+                   client-id-1 player-1
+                   client-id-2 player-2)
                  (assoc new-effects
                    client-id-1 (create-ship-explosion-effect p1)
                    client-id-2 (create-ship-explosion-effect p2))
+                 (into new-events [[:spawn :all [client-id-1 player-1]]
+                                   [:spawn :all [client-id-2 player-2]]])
                  (-> score
                      (update-in [client-id-1] dec)
                      (update-in [client-id-2] dec))
                  (rest pairs)))
-        (recur players new-effects score (rest pairs)))
+        (recur players new-effects new-events score (rest pairs)))
       (merge state {:players players
                     :effects (apply concat effects (vals new-effects))
-                    :score   score}))))
+                    :score   score
+                    :events  (into events new-events)}))))
 
 (defn- bullet-hit?
   [client-id x y bullet]
@@ -215,6 +229,8 @@
 
 (extend-type stardust.models.DeathMatchScreen
   Tickable
-  (tick [{:keys [effects] :as state} multiplier]
+  (tick [{:keys [players bullets effects] :as state} multiplier]
     (-> state
+        (merge {:players (reduce (fn [m [k v]] (assoc m k (tick v multiplier))) {} players)
+                :bullets (bullets-tick players bullets multiplier)})
         (assoc :effects (effects-tick effects multiplier)))))
