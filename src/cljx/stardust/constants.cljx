@@ -14,6 +14,7 @@
 
 (def SHIP_RADIUS 17)
 
+(def COLLISION_DISTANCE (- (* 2 SHIP_RADIUS) 5))
 ;;
 ;; Players
 ;;

@@ -21,22 +21,17 @@
   (go-loop [state         (m/death-match)
             commands      []
             advance-timer (timeout 20)
-            sync-timer    (timeout 3000)
             moment        (System/currentTimeMillis)]
-           (let [[command ch] (alts! [advance-timer sync-timer commands-channel])]
+           (let [[command ch] (alts! [advance-timer commands-channel])]
              (condp = ch
                commands-channel (when command
-                                  (recur state (conj commands command) advance-timer sync-timer moment))
+                                  (recur state (conj commands command) advance-timer  moment))
                advance-timer    (let [current    (System/currentTimeMillis)
                                       multiplier (/ (- current moment) 1000.0)
                                       new-state  (advance-state state commands multiplier)]
                                   (doseq [event (:events new-state)]
                                     (>! events-channel event))
-                                  (recur (assoc new-state :events []) [] (timeout 20) sync-timer current))
-               sync-timer        (do
-                                   (doseq [[client-id _] (:players state)]
-                                     (>! events-channel [:state client-id (m/death-match-to-screen client-id state)]))
-                                   (recur state commands advance-timer (timeout 3000) moment))))))
+                                  (recur (assoc new-state :events []) [] (timeout 20) current))))))
 
 (defn create-client-notifier
   [events-channel clients]

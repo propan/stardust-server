@@ -95,7 +95,7 @@
 (defn- ships-collide?
   [s1 s2]
   (<= (u/distance (:x s1) (:y s1) (:x s2) (:y s2))
-      (* 2 C/SHIP_RADIUS)))
+      C/COLLISION_DISTANCE))
 
 (defn- detect-players-collisions
   [{:keys [players effects score events] :as state}]
@@ -125,8 +125,8 @@
                  (assoc new-effects
                    client-id-1 (create-ship-explosion-effect p1)
                    client-id-2 (create-ship-explosion-effect p2))
-                 (into new-events [[:spawn :all [client-id-1 player-1]]
-                                   [:spawn :all [client-id-2 player-2]]])
+                 (into new-events [[:spawn :all player-1]
+                                   [:spawn :all player-2]])
                  (-> score
                      (update-in [client-id-1] dec)
                      (update-in [client-id-2] dec))

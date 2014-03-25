@@ -29,13 +29,18 @@
       (update-in [:score]   dissoc client-id)
       (update-in [:events]  conj   [:leave :all client-id])))
 
+(defn- emmit-player-state-event
+  [state client-id]
+  (let [player (get-in state [:players client-id])]
+    (update-in state [:events] conj [:player :all player])))
+
 (defn- change-player-state
   [state client-id property from to]
   (let [current (get-in state [:players client-id property])]
     (if (= current from)
       (-> state
           (assoc-in  [:players client-id property] to)
-          (update-in [:events] conj [:property :all [client-id property to]]))
+          (emmit-player-state-event client-id))
       state)))
 
 (defn- handle-keyboard-event
