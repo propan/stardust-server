@@ -65,8 +65,8 @@
     (Particle. x y vX vY heading (u/random-int 1 2) lifespan lifespan)))
 
 (defn player
-  [client-id x y immunity color]
-  (Player. client-id x y 0 0 0 0 :none false false 0 immunity color C/MAX_PLAYER_LIFE))
+  [client-id color]
+  (Player. client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) 0 0 0 0 :none false false 0 C/SPAWN_IMMUNITY_SECONDS color C/MAX_PLAYER_LIFE))
 
 (defn connection-screen
   [out-channel]

@@ -3,19 +3,6 @@
             [stardust.models :as m]
             [stardust.protocols :refer [Tickable tick]]
             [stardust.utils :as u]))
-;;
-;; Effects
-;;
-
-(defn create-hit-effect
-  [{:keys [x y]}]
-  (repeatedly (u/random-int 3 7) #(m/particle x y)))
-
-(defn create-ship-explosion-effect
-  [{:keys [x y vX vY h color] :as ship}]
-  (let [points [[-10 10] [0 -15] [10 10] [7 5] [-7 5]]
-        pieces (partition 2 1 (take 1 points) points)]
-    (map #(m/ship-piece x y vX vY h color %) pieces)))
 
 ;;
 ;; Movement Functions
@@ -97,45 +84,24 @@
   (<= (u/distance (:x s1) (:y s1) (:x s2) (:y s2))
       C/COLLISION_DISTANCE))
 
+(defn- respawn-player
+  [state client-id]
+  (let [color  (get-in state [:players client-id :color])
+        player (m/player client-id color)]
+    (-> state
+        (assoc-in  [:players client-id] player)
+        (update-in [:score client-id] dec)
+        (update-in [:events] conj [:spawn :all player]))))
+
 (defn- detect-players-collisions
-  [{:keys [players effects score events] :as state}]
-  (loop [players     players
-         new-effects {}
-         new-events  []
-         score       score
-         pairs       (pair-players players)]
+  [{:keys [players] :as state}]
+  (loop [pairs      (pair-players players)
+         collisions #{}]
     (if-let [[p1 p2] (first pairs)]
       (if (ships-collide? p1 p2)
-        (let [client-id-1 (:client-id p1)
-              client-id-2 (:client-id p2)
-              player-1    (m/player client-id-1
-                                    (/ C/FIELD_WIDTH 2)
-                                    (/ C/FIELD_HEIGHT 2)
-                                    C/SPAWN_IMMUNITY_SECONDS
-                                    (:color p1))
-              player-2    (m/player client-id-2
-                                    (/ C/FIELD_WIDTH 2)
-                                    (/ C/FIELD_HEIGHT 2)
-                                    C/SPAWN_IMMUNITY_SECONDS
-                                    (:color p2))]
-          ;; TODO: refactor?
-          (recur (assoc players
-                   client-id-1 player-1
-                   client-id-2 player-2)
-                 (assoc new-effects
-                   client-id-1 (create-ship-explosion-effect p1)
-                   client-id-2 (create-ship-explosion-effect p2))
-                 (into new-events [[:spawn :all player-1]
-                                   [:spawn :all player-2]])
-                 (-> score
-                     (update-in [client-id-1] dec)
-                     (update-in [client-id-2] dec))
-                 (rest pairs)))
-        (recur players new-effects new-events score (rest pairs)))
-      (merge state {:players players
-                    :effects (apply concat effects (vals new-effects))
-                    :score   score
-                    :events  (into events new-events)}))))
+        (recur (rest pairs) (conj collisions (:client-id p1) (:client-id p2)))
+        (recur (rest pairs) collisions))
+      (reduce respawn-player state collisions))))
 
 (defn- bullet-hit?
   [client-id x y bullet]
@@ -176,15 +142,16 @@
                     life-left                      (- life (:e hit))]
                 (if (pos? life-left)
                   (recur (assoc-in players [client-id :life] life-left)
-                         (update-in new-effects [100] into (create-hit-effect hit))
+                         ;;(update-in new-effects [100] into (create-hit-effect hit))
+                         new-effects
                          bullets
                          score
                          (rest ships))
-                  (recur (assoc players
-                           client-id (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color))
-                         (-> new-effects
+                  (recur (assoc players client-id (m/player client-id color))
+                         #_(-> new-effects
                              (assoc client-id (create-ship-explosion-effect ship))
                              (update-in [100] into (create-hit-effect hit)))
+                         new-effects
                          bullets
                          (update-in score [(:cid hit)] inc)
                          (rest ships))))

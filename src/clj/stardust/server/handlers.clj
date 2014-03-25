@@ -16,7 +16,7 @@
 (defn- handle-enter-event
   [state client-id]
   (let [color  (next-player-color (:players state))
-        player (m/player client-id (/ C/FIELD_WIDTH 2) (/ C/FIELD_HEIGHT 2) C/SPAWN_IMMUNITY_SECONDS color)]
+        player (m/player client-id color)]
     (-> state
         (assoc-in  [:players client-id] player)
         (assoc-in  [:score client-id] 0)
