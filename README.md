@@ -1,6 +1,20 @@
 # stardust-server
 
-TBD
+a server for multiplayer version of Asteroids written in Clojure
+
+## Usage
+
+To start a server execute:
+
+```bash
+lein run
+```
+
+To build a jar-file execute:
+
+```bash
+lein uberjar
+```
 
 ## License
 
