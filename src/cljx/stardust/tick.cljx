@@ -109,54 +109,46 @@
        (<= (u/distance x y (:x bullet) (:y bullet))
            (+ C/BULLET_RADIUS C/SHIP_RADIUS))))
 
-(defn- find-bullet-hit
-  [{:keys [client-id x y]} bullets]
-  (loop [hit     nil     ;; how about multiple hits?
-         result  []      ;; transient?
-         bullets bullets]
-    (let [bullet (first bullets)]
-      (if (or hit (not bullet))
-        [hit (into result bullets)]
-        (if (bullet-hit? client-id x y bullet)
-          (recur bullet result (rest bullets))
-          (recur nil (conj result bullet) (rest bullets)))))))
+(defn- handle-bullets
+  [{:keys [client-id x y color life] :as player} bullets events score]
+  (loop [life    life
+         bullets bullets
+         miss    (transient [])
+         events  events
+         score   score]
+    (if-let [bullet (first bullets)]
+      (if (bullet-hit? client-id x y bullet)
+        (let [left (- life (:e bullet))]
+          (if (pos? left)
+            (recur left (rest bullets) miss (conj! events [:hit :all bullet]) score)
+            (let [player    (m/player client-id color)
+                  killer-id (:cid bullet)
+                  points    (inc (get score killer-id))]
+              [player
+               (into bullets (persistent! miss))
+               (reduce conj! events [[:hit :all bullet] [:spawn :all player] [:score :all [killer-id points]]])
+               (assoc! score killer-id points)])))
+        (recur life (rest bullets) (conj! miss bullet) events score))
+      [(assoc player :life life) (into bullets (persistent! miss)) events score])))
 
-(defn- detect-bullets-hits
-  [{:keys [players bullets effects score] :as state}]
-  (loop [players     players
-         new-effects {} ;; there was some reason, but what?
-         bullets     bullets
-         score       score
-         ships       (vals players)]
-    (let [ship (first ships)]
-      (if (or (not ship)
-              (not bullets))
-        (merge state {:players players
-                      :bullets bullets
-                      :score   score
-                      :effects (apply concat effects (vals new-effects))})
+(defn detect-bullets-hits
+  [{:keys [players bullets events score] :as state}]
+  (loop [players players
+         events  (transient events)
+         score   (transient score)
+         bullets bullets
+         ships   (vals players)]
+    (if (and (seq ships)
+             (seq bullets))
+      (let [ship (first ships)]
         (if-not (pos? (:immunity ship))
-          (let [[hit bullets] (find-bullet-hit ship bullets)]
-            (if hit
-              (let [{:keys [client-id color life]} ship
-                    life-left                      (- life (:e hit))]
-                (if (pos? life-left)
-                  (recur (assoc-in players [client-id :life] life-left)
-                         ;;(update-in new-effects [100] into (create-hit-effect hit))
-                         new-effects
-                         bullets
-                         score
-                         (rest ships))
-                  (recur (assoc players client-id (m/player client-id color))
-                         #_(-> new-effects
-                             (assoc client-id (create-ship-explosion-effect ship))
-                             (update-in [100] into (create-hit-effect hit)))
-                         new-effects
-                         bullets
-                         (update-in score [(:cid hit)] inc)
-                         (rest ships))))
-              (recur players new-effects bullets score (rest ships))))
-          (recur players new-effects bullets score (rest ships)))))))
+          (let [[player bullets events score] (handle-bullets ship bullets events score)]
+            (recur (assoc players (:client-id player) player) events score bullets (rest ships)))
+          (recur players events score bullets (rest ships))))
+      (merge state {:players players
+                    :bullets bullets
+                    :events  (persistent! events)
+                    :score   (persistent! score)}))))
 
 (defn- player-shoot
   [bullets [client-id player]]
