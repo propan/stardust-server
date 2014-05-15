@@ -33,11 +33,13 @@
     {:client-id   client-id
      :in          in
      :out         out
-     :out-process (go-loop [event (<! out)]
-                           (when-not (nil? event)
-                             (do
-                               (.send connection (pr-str event))
-                               (recur (<! out)))))}))
+     :out-process (go
+                   (loop [event (<! out)]
+                     (when-not (nil? event)
+                       (do
+                         (.send connection (pr-str event))
+                         (recur (<! out)))))
+                   (log/debug "Stopping client #" client-id "output process"))}))
 
 (defn connect-client
   [clients connection connections-channel]
@@ -47,8 +49,9 @@
 
 (defn disconnect-client
   [clients connection]
-  (if-let [{:keys [in out]} (get clients connection)]
+  (if-let [{:keys [client-id in out]} (get clients connection)]
     (do
+      (log/debug "Removing client #" client-id "from connected clients")
       (close! out)
       (close! in)
       (dissoc clients connection))
@@ -62,14 +65,17 @@
 
 (defn connections-process
   [events]
+  (log/debug "Starting server connections process")
   (let [connections-channel (chan)]
-    (go-loop [clients {}]
-             (let [[type data] (<! events)]
-               (recur
-                (case type
-                  :connected    (connect-client clients data connections-channel)
-                  :disconnected (disconnect-client clients data)
-                  :message      (handle-message clients data)))))
+    (go
+     (loop [clients {}]
+       (let [[type data] (<! events)]
+         (recur
+          (case type
+            :connected    (connect-client clients data connections-channel)
+            :disconnected (disconnect-client clients data)
+            :message      (handle-message clients data)))))
+     (log/debug "Stopping server connections process"))
     connections-channel))
 
 (defn exit [status msg]
